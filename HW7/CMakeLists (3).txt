@@ -1,0 +1,27 @@
+cmake_minimum_required(VERSION 3.13)
+
+include("${CMAKE_CURRENT_LIST_DIR}/pico_sdk_import.cmake")
+
+project(HW7_mcp4912_spi_dac LANGUAGES C CXX ASM)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+pico_sdk_init()
+
+set(APP_NAME HW7_mcp4912_spi_dac)
+
+add_executable(${APP_NAME}
+    HW7_main.c
+)
+
+target_link_libraries(${APP_NAME} PRIVATE
+    pico_stdlib
+    hardware_spi
+    hardware_gpio
+    m
+)
+
+pico_add_extra_outputs(${APP_NAME})
