@@ -1,0 +1,30 @@
+# HW9 Digital Signal Processing Deliverables
+
+This folder contains a completed HW9 deliverable set.
+
+## Main files
+
+- `hw9_dsp.py` — Python code for reading CSV data, calculating sample rates, generating FFTs, and applying MAF, IIR, and FIR low-pass filters.
+- `sample_rates.txt` — calculated sample rates.
+- `sigA.csv`, `sigB.csv`, `sigC.csv`, `sigD.csv` — the four provided data sets.
+- `plots/` — all generated plot images.
+
+## Plot files
+
+For each signal, there are four images:
+
+- `sigX_raw_fft.png`
+- `sigX_maf_*.png`
+- `sigX_iir_*.png`
+- `sigX_fir_*.png`
+
+The unfiltered data is black and the filtered data is red.
+
+## How to run
+
+```bash
+pip install numpy matplotlib
+python hw9_dsp.py
+```
+
+Running the script will regenerate the plots and `sample_rates.txt`.

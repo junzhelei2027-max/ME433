@@ -1,0 +1,244 @@
+# HW9 - Digital Signal Processing
+# Author: Junzhe Lei
+#
+# This script reads sigA.csv, sigB.csv, sigC.csv, and sigD.csv,
+# calculates sample rate, plots FFTs, and applies three low-pass filters:
+# moving average filter, IIR filter, and windowed-sinc FIR filter.
+#
+# Required packages:
+# pip install numpy matplotlib
+
+import csv
+from pathlib import Path
+import numpy as np
+import matplotlib.pyplot as plt
+
+DATA_FILES = ["sigA.csv", "sigB.csv", "sigC.csv", "sigD.csv"]
+
+# These values were chosen by looking at the FFTs and balancing smoothing vs delay.
+SETTINGS = {
+    "sigA": {
+        "maf_points": 500,
+        "iir_A": 0.995,
+        "iir_B": 0.005,
+        "fir_cutoff_hz": 10.0,
+        "fir_taps": 1201,
+        "fir_window": "hamming",
+        "fft_xmax_hz": 60,
+    },
+    "sigB": {
+        "maf_points": 300,
+        "iir_A": 0.990,
+        "iir_B": 0.010,
+        "fir_cutoff_hz": 5.0,
+        "fir_taps": 401,
+        "fir_window": "hamming",
+        "fft_xmax_hz": 60,
+    },
+    "sigC": {
+        "maf_points": 80,
+        "iir_A": 0.980,
+        "iir_B": 0.020,
+        "fir_cutoff_hz": 20.0,
+        "fir_taps": 401,
+        "fir_window": "hamming",
+        "fft_xmax_hz": 80,
+    },
+    "sigD": {
+        "maf_points": 50,
+        "iir_A": 0.950,
+        "iir_B": 0.050,
+        "fir_cutoff_hz": 2.0,
+        "fir_taps": 201,
+        "fir_window": "hamming",
+        "fft_xmax_hz": 20,
+    },
+}
+
+
+def read_csv(filename):
+    """Read a two-column CSV into time and signal arrays."""
+    t = []
+    y = []
+    with open(filename, newline="") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            if len(row) >= 2:
+                t.append(float(row[0]))
+                y.append(float(row[1]))
+    return np.array(t), np.array(y)
+
+
+def sample_rate(t):
+    """Calculate sample rate from the time vector."""
+    total_time = t[-1] - t[0]
+    return len(t) / total_time
+
+
+def fft_mag(t, y):
+    """Return one-sided FFT frequency vector and amplitude magnitude."""
+    dt = np.mean(np.diff(t))
+    y_zero_mean = y - np.mean(y)
+    freqs = np.fft.rfftfreq(len(y_zero_mean), d=dt)
+    mag = 2.0 * np.abs(np.fft.rfft(y_zero_mean)) / len(y_zero_mean)
+    return freqs, mag
+
+
+def moving_average_filter(y, points):
+    """Causal moving average filter. Initial missing samples are treated as zeros."""
+    weights = np.ones(points) / points
+    return np.convolve(y, weights, mode="full")[: len(y)]
+
+
+def iir_filter(y, A, B):
+    """First-order IIR low-pass filter: avg[i] = A*avg[i-1] + B*y[i]."""
+    out = np.zeros_like(y)
+    out[0] = y[0]
+    for i in range(1, len(y)):
+        out[i] = A * out[i - 1] + B * y[i]
+    return out
+
+
+def design_lowpass_fir(num_taps, cutoff_hz, fs, window="hamming"):
+    """Create low-pass FIR weights with the windowed-sinc method."""
+    n = np.arange(num_taps)
+    center = (num_taps - 1) / 2
+    h = 2 * cutoff_hz / fs * np.sinc(2 * cutoff_hz / fs * (n - center))
+
+    if window == "hamming":
+        h *= np.hamming(num_taps)
+    elif window == "hann":
+        h *= np.hanning(num_taps)
+
+    h /= np.sum(h)
+    return h
+
+
+def fir_filter(y, weights):
+    """Causal FIR filter. Initial missing samples are treated as zeros."""
+    return np.convolve(y, weights, mode="full")[: len(y)]
+
+
+def plot_fft_only(name, t, y, out_dir, xmax):
+    freqs, mag = fft_mag(t, y)
+    step = max(1, len(t) // 5000)
+
+    fig, axes = plt.subplots(2, 1, figsize=(10, 7))
+
+    axes[0].plot(t[::step], y[::step], color="black", linewidth=0.8)
+    axes[0].set_title(f"{name}: Raw signal vs time")
+    axes[0].set_xlabel("Time (s)")
+    axes[0].set_ylabel("Signal")
+    axes[0].grid(True)
+
+    axes[1].plot(freqs, mag, color="black", linewidth=0.8)
+    axes[1].set_xlim(0, xmax)
+    axes[1].set_title(f"{name}: FFT of raw signal")
+    axes[1].set_xlabel("Frequency (Hz)")
+    axes[1].set_ylabel("Magnitude")
+    axes[1].grid(True)
+
+    fig.tight_layout()
+    fig.savefig(out_dir / f"{name}_raw_fft.png", dpi=150)
+    plt.close(fig)
+
+
+def plot_filtered(name, t, original, filtered, out_dir, title, xmax, filename):
+    f0, m0 = fft_mag(t, original)
+    f1, m1 = fft_mag(t, filtered)
+    step = max(1, len(t) // 5000)
+
+    fig, axes = plt.subplots(2, 1, figsize=(10, 7))
+
+    axes[0].plot(t[::step], original[::step], color="black", linewidth=0.8, label="unfiltered")
+    axes[0].plot(t[::step], filtered[::step], color="red", linewidth=0.9, label="filtered")
+    axes[0].set_title(title)
+    axes[0].set_xlabel("Time (s)")
+    axes[0].set_ylabel("Signal")
+    axes[0].legend()
+    axes[0].grid(True)
+
+    axes[1].plot(f0, m0, color="black", linewidth=0.8, label="unfiltered FFT")
+    axes[1].plot(f1, m1, color="red", linewidth=0.9, label="filtered FFT")
+    axes[1].set_xlim(0, xmax)
+    axes[1].set_title("FFT comparison")
+    axes[1].set_xlabel("Frequency (Hz)")
+    axes[1].set_ylabel("Magnitude")
+    axes[1].legend()
+    axes[1].grid(True)
+
+    fig.tight_layout()
+    fig.savefig(out_dir / filename, dpi=150)
+    plt.close(fig)
+
+
+def main():
+    out_dir = Path("plots")
+    out_dir.mkdir(exist_ok=True)
+
+    summary_lines = []
+
+    for filename in DATA_FILES:
+        stem = Path(filename).stem
+        settings = SETTINGS[stem]
+        t, y = read_csv(filename)
+
+        fs = sample_rate(t)
+        summary_lines.append(f"{stem}: {len(t)} samples, sample rate = {fs:.2f} Hz")
+
+        plot_fft_only(stem, t, y, out_dir, settings["fft_xmax_hz"])
+
+        maf = moving_average_filter(y, settings["maf_points"])
+        plot_filtered(
+            stem,
+            t,
+            y,
+            maf,
+            out_dir,
+            f"{stem}: MAF filtered, X = {settings['maf_points']} points",
+            settings["fft_xmax_hz"],
+            f"{stem}_maf_X{settings['maf_points']}.png",
+        )
+
+        iir = iir_filter(y, settings["iir_A"], settings["iir_B"])
+        iir_a = str(settings["iir_A"]).replace(".", "p")
+        iir_b = str(settings["iir_B"]).replace(".", "p")
+        plot_filtered(
+            stem,
+            t,
+            y,
+            iir,
+            out_dir,
+            f"{stem}: IIR filtered, A = {settings['iir_A']}, B = {settings['iir_B']}",
+            settings["fft_xmax_hz"],
+            f"{stem}_iir_A{iir_a}_B{iir_b}.png",
+        )
+
+        weights = design_lowpass_fir(
+            settings["fir_taps"],
+            settings["fir_cutoff_hz"],
+            fs,
+            settings["fir_window"],
+        )
+        fir = fir_filter(y, weights)
+        cutoff = str(settings["fir_cutoff_hz"]).replace(".", "p")
+        plot_filtered(
+            stem,
+            t,
+            y,
+            fir,
+            out_dir,
+            f"{stem}: FIR low-pass, {settings['fir_taps']} taps, cutoff = {settings['fir_cutoff_hz']} Hz, {settings['fir_window']} window",
+            settings["fft_xmax_hz"],
+            f"{stem}_fir_{settings['fir_taps']}taps_cutoff{cutoff}Hz.png",
+        )
+
+    with open("sample_rates.txt", "w") as f:
+        f.write("\n".join(summary_lines) + "\n")
+
+    for line in summary_lines:
+        print(line)
+
+
+if __name__ == "__main__":
+    main()
