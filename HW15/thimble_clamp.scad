@@ -1,0 +1,2 @@
+$fn=48;
+difference(){union(){cube([28,18,10]);translate([14,9,10])cylinder(h=12,r=8);}translate([14,9,7])cylinder(h=18,r=5.2);translate([14,9,-1])cylinder(h=13,r=1.9);translate([14,-1,15])cube([2,20,12],center=true);}

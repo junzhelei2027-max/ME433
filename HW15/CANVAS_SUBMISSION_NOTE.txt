@@ -1,0 +1,6 @@
+Canvas submission:
+1. Upload a photo of the first printed parts if you have printed them.
+2. Put the same photo or CAD parts image in the GitHub HW15 folder.
+3. Submit the GitHub HW15 folder link on Canvas.
+
+Important: The file `first_version_parts_render.png` is a CAD-style render/layout. If the instructor strictly requires a real 3D-printed-parts photo, replace it with your actual photo before submitting.

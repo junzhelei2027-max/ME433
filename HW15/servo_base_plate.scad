@@ -1,0 +1,3 @@
+$fn=48;
+module rounded_plate(x=90,y=65,z=4,r=4){hull(){translate([r,r,0])cylinder(h=z,r=r);translate([x-r,r,0])cylinder(h=z,r=r);translate([r,y-r,0])cylinder(h=z,r=r);translate([x-r,y-r,0])cylinder(h=z,r=r);}}
+difference(){rounded_plate();translate([25,18,-1])cylinder(h=6,r=2.3);translate([25,47,-1])cylinder(h=6,r=2.3);translate([60,18,-1])cylinder(h=6,r=2.3);translate([60,47,-1])cylinder(h=6,r=2.3);translate([8,8,-1])cylinder(h=6,r=2);translate([82,8,-1])cylinder(h=6,r=2);translate([8,57,-1])cylinder(h=6,r=2);translate([82,57,-1])cylinder(h=6,r=2);}
